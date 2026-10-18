@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>She's Birth Day</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000;
+    --fg:#fff;
+    --dim:rgba(255,255,255,.55);
+    --line:rgba(255,255,255,.22);
+    --accent:#ff6b8a;
+    --gold:#ffd98a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:var(--bg);color:var(--fg);
+    font-family:'Hind Siliguri','Noto Sans Bengali','Kalpurush',sans-serif;overflow:hidden}
+  canvas#fx{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+
+  .scene{
+    position:fixed;inset:0;z-index:1;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px;text-align:center;
+    opacity:0;visibility:hidden;transform:scale(.985);
+    transition:opacity 1.1s ease, visibility 1.1s, transform 1.1s ease;
+  }
+  .scene.active{opacity:1;visibility:visible;transform:none}
+
+  h1{font-weight:300;font-size:clamp(28px,7.2vw,58px);line-height:1.4;letter-spacing:.4px}
+  h1 b{font-weight:600;color:var(--accent)}
+  h2{font-weight:300;font-size:clamp(20px,5vw,30px);line-height:1.6}
+  .small{color:var(--dim);font-size:clamp(14px,3.6vw,18px);margin-top:14px;font-weight:300;line-height:1.7}
+  .accent{color:var(--accent)}
+  .hint{color:var(--dim);font-size:15px;font-weight:300;margin-top:18px;animation:pulse 2.2s infinite}
+  @keyframes pulse{50%{opacity:.3}}
+
+  .btn{
+    margin-top:38px;padding:13px 34px;border-radius:40px;
+    background:transparent;color:var(--fg);border:1px solid rgba(255,255,255,.4);
+    font:inherit;font-size:17px;cursor:pointer;letter-spacing:.4px;
+    transition:all .35s ease, opacity 1s ease, transform 1s ease;
+  }
+  .btn:hover{background:var(--fg);color:#000;border-color:var(--fg)}
+  .btn.hidden{opacity:0;pointer-events:none;transform:translateY(8px)}
+
+  /* ---------- প্রগ্রেস ডট ---------- */
+  #dots{position:fixed;top:18px;left:0;right:0;display:flex;gap:7px;justify-content:center;z-index:6;pointer-events:none}
+  #dots i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .6s}
+  #dots i.on{background:var(--accent);width:18px;border-radius:4px}
+
+  /* ---------- দৃশ্য ১: ইন্ট্রো ---------- */
+  .mini-stage{position:relative;width:min(340px,86vw);height:70px;margin-bottom:38px}
+  .mini-stage .a,.mini-stage .b{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;transform:translateY(-50%)}
+  .mini-stage .a{left:0;background:#fff;box-shadow:0 0 16px 4px rgba(255,255,255,.55)}
+  .mini-stage .b{right:0;background:var(--accent);box-shadow:0 0 16px 4px rgba(255,107,138,.6)}
+  .mini-stage .ln{position:absolute;left:14px;right:14px;top:50%;height:1px;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,.5) 0 5px,transparent 5px 12px);
+    animation:flow 1.2s linear infinite}
+  @keyframes flow{to{background-position:12px 0}}
+  .mini-stage .pulse{position:absolute;top:50%;left:0;width:8px;height:8px;margin-top:-4px;border-radius:50%;
+    background:var(--gold);box-shadow:0 0 12px 3px rgba(255,217,138,.7);animation:travel 3.4s ease-in-out infinite}
+  @keyframes travel{0%{left:0;opacity:0}15%{opacity:1}85%{opacity:1}100%{left:calc(100% - 8px);opacity:0}}
+
+  /* ---------- দৃশ্য ২: কাউন্টার ---------- */
+  .count-grid{display:flex;gap:clamp(12px,4vw,26px);margin-top:26px;justify-content:center}
+  .cell{min-width:64px}
+  .cell .n{font-size:clamp(30px,9vw,54px);font-weight:300;line-height:1.1;font-variant-numeric:tabular-nums}
+  .cell .l{font-size:13px;color:var(--dim);margin-top:4px}
+  .cell.big .n{color:var(--accent);font-weight:500}
+
+  /* ---------- দৃশ্য ৩: স্মৃতি ---------- */
+  .card{
+    width:min(420px,88vw);padding:34px 26px;border:1px solid var(--line);border-radius:14px;
+    background:rgba(255,255,255,.025);backdrop-filter:blur(4px);
+    opacity:0;transform:translateY(16px);transition:all .8s ease;min-height:200px;
+    display:flex;flex-direction:column;justify-content:center;
+  }
+  .card.show{opacity:1;transform:none}
+  .card .when{color:var(--accent);font-size:14px;letter-spacing:1px;margin-bottom:12px}
+  .card .ttl{font-size:clamp(22px,5.5vw,28px);font-weight:500;margin-bottom:10px}
+  .card .txt{color:rgba(255,255,255,.78);font-weight:300;line-height:1.8;font-size:clamp(15px,3.8vw,17px)}
+  .mdots{display:flex;gap:8px;margin-top:22px}
+  .mdots i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.2);transition:.5s}
+  .mdots i.on{background:#fff;transform:scale(1.4)}
+
+  /* ---------- দৃশ্য ৪: দূরত্ব ---------- */
+  .stage{position:relative;width:100%;max-width:560px;height:280px;touch-action:none;margin-top:6px}
+  .stage svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+  #ln{stroke:rgba(255,255,255,.55);stroke-width:1.2;stroke-dasharray:4 9;animation:dash 1s linear infinite}
+  #ln.joined{stroke:var(--accent);stroke-dasharray:none;stroke-width:2;animation:none;filter:drop-shadow(0 0 6px var(--accent))}
+  @keyframes dash{to{stroke-dashoffset:-13}}
+  .orb{position:absolute;width:38px;height:38px;border-radius:50%;transform:translate(-50%,-50%)}
+  #orbA{background:#fff;box-shadow:0 0 22px 7px rgba(255,255,255,.5);cursor:grab;z-index:3;touch-action:none}
+  #orbA::after{content:"";position:absolute;inset:-14px;border-radius:50%;border:1px solid rgba(255,255,255,.35);animation:ring 2s infinite}
+  #orbA.drag{cursor:grabbing}
+  #orbB{background:var(--accent);box-shadow:0 0 22px 7px rgba(255,107,138,.55);z-index:2;animation:beatB 1.6s infinite}
+  @keyframes ring{0%{transform:scale(.8);opacity:.9}100%{transform:scale(1.6);opacity:0}}
+  @keyframes beatB{50%{box-shadow:0 0 34px 12px rgba(255,107,138,.7)}}
+  .lbl{position:absolute;font-size:13px;color:var(--dim);transform:translateX(-50%);white-space:nowrap}
+  #distNum{font-size:clamp(34px,9vw,52px);font-weight:300;margin-top:6px;font-variant-numeric:tabular-nums}
+  #distNum span{font-size:.4em;color:var(--dim);margin-left:6px}
+  #meetMsg{opacity:0;transform:translateY(10px);transition:all 1.2s ease;margin-top:10px}
+  #meetMsg.show{opacity:1;transform:none}
+
+  /* ---------- দৃশ্য ৫: কেক ---------- */
+  .cake-wrap{position:relative;width:230px;height:240px;margin-bottom:10px;cursor:pointer}
+  .plate{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:210px;height:8px;border-radius:50%;background:#222}
+  .layer{position:absolute;left:50%;transform:translateX(-50%);border-radius:8px 8px 4px 4px}
+  .l1{bottom:8px;width:190px;height:58px;background:#f4f0ea}
+  .l2{bottom:66px;width:148px;height:52px;background:var(--accent)}
+  .l3{bottom:118px;width:106px;height:44px;background:#f4f0ea}
+  .drip{position:absolute;left:50%;transform:translateX(-50%);bottom:154px;width:106px;height:14px;background:var(--accent);border-radius:8px 8px 20px 20px;opacity:.9}
+  .candle{position:absolute;bottom:162px;width:8px;height:38px;background:linear-gradient(90deg,#fff,#ffd5df);border-radius:2px}
+  .c1{left:calc(50% - 22px)} .c2{left:calc(50% + 14px)}
+  .flame{
+    position:absolute;bottom:198px;width:16px;height:30px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+    background:radial-gradient(ellipse at 50% 70%,#fff 0%,var(--gold) 45%,#ff9a3c 80%,transparent 100%);
+    box-shadow:0 0 25px 8px rgba(255,200,100,.55),0 0 70px 24px rgba(255,150,80,.22);
+    animation:flick .18s infinite alternate;transform-origin:50% 100%;transition:opacity .5s ease,transform .5s ease;
+  }
+  .f1{left:calc(50% - 26px)} .f2{left:calc(50% + 10px);animation-delay:.07s}
+  @keyframes flick{from{transform:scale(1,1) rotate(-2deg)}to{transform:scale(.92,1.08) rotate(2deg)}}
+  .flame.out{opacity:0;animation:none;transform:scale(.2)}
+  .smoke{position:absolute;bottom:204px;width:6px;height:30px;border-radius:50%;background:rgba(255,255,255,.35);filter:blur(6px);opacity:0}
+  .s1{left:calc(50% - 21px)} .s2{left:calc(50% + 15px)}
+  .smoke.go{animation:smoke 2.4s ease-out forwards}
+  @keyframes smoke{0%{opacity:.6;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(14px,-80px) scale(3)}}
+  .glow-title{text-shadow:0 0 30px rgba(255,107,138,.65)}
+
+  /* ---------- দৃশ্য ৬: চিঠি ---------- */
+  .paper{
+    width:min(560px,92vw);max-height:78vh;overflow-y:auto;text-align:left;
+    padding:34px 28px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.55);
+    backdrop-filter:blur(6px);scrollbar-width:none;
+  }
+  .paper::-webkit-scrollbar{display:none}
+  .paper h2{font-weight:500;color:var(--accent);margin-bottom:18px;font-size:clamp(22px,5.5vw,28px)}
+  .paper p{font-size:clamp(16px,4vw,19px);line-height:1.95;font-weight:300;margin-bottom:14px;
+    opacity:0;transform:translateY(10px);transition:all 1.2s ease}
+  .paper p.show{opacity:1;transform:none}
+  .paper .sign{color:var(--dim);text-align:right;margin-top:20px}
+
+  /* ---------- দৃশ্য ৭: ফাইনাল ---------- */
+  .big-heart{font-size:64px;color:var(--accent);animation:hb 1.3s infinite;text-shadow:0 0 30px rgba(255,107,138,.7);margin-bottom:10px}
+  @keyframes hb{0%,100%{transform:scale(1)}15%{transform:scale(1.2)}30%{transform:scale(1)}45%{transform:scale(1.15)}}
+  .meet-box{margin-top:26px;padding:18px 22px;border:1px solid var(--line);border-radius:14px;display:none}
+  .meet-box .t{color:var(--dim);font-size:14px;margin-bottom:6px}
+  .meet-box .v{font-size:clamp(20px,5.5vw,28px);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<canvas id="fx"></canvas>
+<div id="dots"></div>
+
+<!-- ১: ইন্ট্রো -->
+<section class="scene active" id="s0">
+  <div class="mini-stage"><div class="a"></div><div class="ln"></div><div class="pulse"></div><div class="b"></div></div>
+  <h1 id="introTitle">মাঝখানে অনেকটা <b>পথ</b></h1>
+  <p class="small" id="introSub"></p>
+  <button class="btn" id="startBtn">শুরু করি</button>
+</section>
+
+<!-- ২: কাউন্টার -->
+<section class="scene" id="s1">
+  <p class="small" style="margin:0 0 6px">১২ জুলাই ২০২৫ থেকে আমরা একসাথে</p>
+  <div class="count-grid">
+    <div class="cell big"><div class="n" id="cD">০</div><div class="l">দিন</div></div>
+    <div class="cell"><div class="n" id="cH">০</div><div class="l">ঘণ্টা</div></div>
+    <div class="cell"><div class="n" id="cM">০</div><div class="l">মিনিট</div></div>
+    <div class="cell"><div class="n" id="cS">০</div><div class="l">সেকেন্ড</div></div>
+  </div>
+  <p class="small" id="cSub" style="margin-top:30px;max-width:340px"></p>
+  <button class="btn" id="toMem">স্মৃতিগুলো দেখি</button>
+</section>
+
+<!-- ৩: স্মৃতি -->
+<section class="scene" id="s2">
+  <div class="card" id="card">
+    <div class="when" id="mWhen"></div>
+    <div class="ttl" id="mTtl"></div>
+    <div class="txt" id="mTxt"></div>
+  </div>
+  <div class="mdots" id="mdots"></div>
+  <button class="btn" id="memNext">পরেরটা</button>
+</section>
+
+<!-- ৪: দূরত্ব -->
+<section class="scene" id="s3">
+  <h2 id="distTitle"></h2>
+  <div class="stage" id="stage">
+    <svg><line id="ln" x1="0" y1="0" x2="0" y2="0"/></svg>
+    <div class="orb" id="orbB"></div>
+    <div class="orb" id="orbA"></div>
+    <div class="lbl" id="lblA">আমি</div>
+    <div class="lbl" id="lblB"></div>
+  </div>
+  <div id="distNum"></div>
+  <p class="hint" id="distHint">আমার বিন্দুটা ধরে টেনে তার কাছে নিয়ে যাও</p>
+  <h2 id="meetMsg"></h2>
+  <button class="btn hidden" id="toCake">এবার আজকের দিনটা</button>
+</section>
+
+<!-- ৫: কেক -->
+<section class="scene" id="s4">
+  <div class="cake-wrap" id="cake">
+    <div class="flame f1" id="fl1"></div><div class="flame f2" id="fl2"></div>
+    <div class="smoke s1" id="sm1"></div><div class="smoke s2" id="sm2"></div>
+    <div class="candle c1"></div><div class="candle c2"></div>
+    <div class="drip"></div>
+    <div class="layer l3"></div><div class="layer l2"></div><div class="layer l1"></div>
+    <div class="plate"></div>
+  </div>
+  <p class="hint" id="cakeHint">মনে মনে একটা ইচ্ছে করো, তারপর মোমবাতিতে ট্যাপ করো</p>
+  <h1 id="hbd" class="glow-title" style="display:none"></h1>
+  <p class="small" id="hbdSub" style="display:none"></p>
+  <button class="btn hidden" id="toLetter">আমার কিছু কথা আছে</button>
+</section>
+
+<!-- ৬: চিঠি -->
+<section class="scene" id="s5">
+  <div class="paper" id="paper">
+    <h2 id="lTitle"></h2>
+    <div id="lBody"></div>
+    <p class="sign" id="sign"></p>
+  </div>
+  <button class="btn hidden" id="toEnd">শেষ একটা জিনিস</button>
+</section>
+
+<!-- ৭: ফাইনাল -->
+<section class="scene" id="s6">
+  <div class="big-heart">♥</div>
+  <h1 id="endTitle"></h1>
+  <p class="small" id="endSub" style="max-width:340px"></p>
+  <div class="meet-box" id="meetBox"><div class="t">পরের দেখা হতে বাকি</div><div class="v" id="meetCnt"></div></div>
+</section>
+
+<script>
+/* ===================== এখানে নিজের মতো বদলাও ===================== */
+const CONFIG = {
+  girl:   "She",
+  sender: "তোমার মানুষ",             // চিঠির শেষে সই
+
+  since:  "2025-07-12T00:00:00",     // সম্পর্ক শুরুর তারিখ
+  km:     18,                        // মাঝখানের দূরত্ব (কিমি)
+  nextMeet: "",                      // পরের দেখার তারিখ, যেমন "2026-12-20T10:00:00" (ফাঁকা রাখলে বক্স আসবে না)
+
+  introSub: "আমরা একে অপরকে আগে থেকেই চিনতাম। শুধু জানতাম না, একদিন এই মানুষটাই আমার সবচেয়ে প্রিয় হয়ে উঠবে।",
+  counterSub: "চেনা একজন থেকে সবচেয়ে প্রিয় মানুষ হয়ে ওঠার প্রতিটা দিন।",
+
+  memories: [
+    { when:"আগে",              title:"চেনা দুজন মানুষ",       text:"আমরা একে অপরকে আগে থেকেই চিনতাম। তখন ভাবিনি, এই সাধারণ চেনাটাই একদিন সবকিছু হয়ে উঠবে।" },
+    { when:"মাঝের সময়",        title:"সাধারণ থেকে বিশেষ",     text:"কবে যে একজন সাধারণ মানুষ আমার সবচেয়ে প্রিয় মানুষ হয়ে উঠলো, আমি নিজেও টের পাইনি।" },
+    { when:"১২ জুলাই ২০২৫",    title:"আমাদের শুরু",           text:"সেদিন থেকে আমরা শুধু চেনা নই, একে অপরের সবচেয়ে আপন..❤️‍🩹" },
+    { when:"প্রতিদিন",          title:"মাত্র ১৮ কিমি",         text:"দূরত্ব মাত্র ১৮ কিলোমিটার, তবু দেখা হয় খুব কম। কাছে থেকেও দূরে থাকার এই অপেক্ষাটা কষ্টের, আবার মিষ্টিও..!🥰" },
+    { when:"গত বছর",           title:"প্রথম জন্মদিন",         text:"তোমার প্রথম জম্মদিন টা তেমন কিছু না করলেও এটা একটু অন্য রকম করার চেষ্টা করলাম,কতটুকু করতে পারলাম জানি না, কিন্তু যেটুকু করসি মন থেকে ভালোবেসে" },
+    { when:"আজ",               title:"তোমার দিন",             text:"আজকের দিনটা শুধু তোমার🥰 আজ আমি পুরোটা সময় তোমার কথাই ভাবছি..!🥰" }
+  ],
+
+  distTitle:  "মাত্র ১৮ কিমি, চলো কমিয়ে ফেলি",
+  meetMsg:    "মাঝখানে যত কিমিই থাকুক, তুমি আমার মনের সবচেয়ে কাছে।",
+
+  hbdTitle: "Happy Birthday jan",
+  hbdSub:   "আমাদের সম্পর্কে তোমার দ্বিতীয় জন্মদিন ✦",
+
+  letterTitle: "প্রিয়,",
+  letter: [
+    "আজ আমাদের সম্পর্কে তোমার দ্বিতীয় জন্মদিন। ১২ জুলাই ২০২৫ থেকে শুরু হওয়া এই পথচলাটা আমার জীবনের সবচেয়ে সুন্দর অধ্যায়।",
+    "আমরা তো একে অপরকে আগেও চিনতাম। একজন সাধারণ পরিচিত মানুষ কীভাবে আমার সবচেয়ে প্রিয় মানুষ হয়ে উঠলো, ভাবলে আজও অবাক লাগে।",
+    "আমাদের মাঝে মাত্র ১৮ কিলোমিটার, অথচ দেখা হয় কত কম। এত কাছে থেকেও দূরে থাকার কষ্টটা আমি বুঝি। কিন্তু প্রতিটা দেখা আমার কাছে একেকটা উৎসবের মতো।",
+    "আমি কথা দিচ্ছি, এই ১৮ কিলোমিটার একদিন শূন্য হয়ে যাবে। আমরা আরও অনেক বেশি সময় একসাথে কাটাবো।",
+    "জন্মদিনের অনেক অনেক ভালোবাসা। তুমি সবসময় এমন হাসিখুশি থেকো। ❤"
+  ],
+
+  endTitle: "ভালোবাসি তোমাকে",
+  endSub:   "habby birthday jan🥰❤️‍🩹"
+};
+/* ================================================================= */
+
+const $ = s => document.querySelector(s);
+const bn = n => String(n).replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d]);
+const fill = t => t.replace(/\{girl\}/g, CONFIG.girl);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const SCENES = ['#s0','#s1','#s2','#s3','#s4','#s5','#s6'];
+let cur = 0;
+
+/* প্রগ্রেস ডট */
+const dots = $('#dots');
+SCENES.forEach(() => dots.appendChild(document.createElement('i')));
+function go(i){
+  cur = i;
+  document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+  $(SCENES[i]).classList.add('active');
+  [...dots.children].forEach((d,k) => d.classList.toggle('on', k === i));
+  onEnter[i] && onEnter[i]();
+}
+
+/* ------------- ব্যাকগ্রাউন্ড ক্যানভাস ------------- */
+const cv = $('#fx'), cx = cv.getContext('2d');
+let W, H, DPR;
+function resize(){
+  DPR = Math.min(devicePixelRatio || 1, 2);
+  W = cv.width = innerWidth * DPR;
+  H = cv.height = innerHeight * DPR;
+}
+addEventListener('resize', resize); resize();
+
+const stars = Array.from({length:120}, () => ({
+  x:Math.random(), y:Math.random(), r:Math.random()*1.4+.3,
+  p:Math.random()*7, s:Math.random()*.02+.005, z:Math.random()*.6+.4
+}));
+let hearts = [], confetti = [], sparks = [];
+let heartRate = 0, mx = 0, my = 0;
+
+function addHeart(){
+  hearts.push({x:Math.random()*W, y:H+20*DPR, size:(Math.random()*10+8)*DPR,
+    vy:(Math.random()*.6+.4)*DPR, sway:Math.random()*7, a:Math.random()*.4+.25});
+}
+function drawHeart(x,y,s){
+  cx.beginPath();
+  cx.moveTo(x,y+s*.3);
+  cx.bezierCurveTo(x,y,x-s*.5,y,x-s*.5,y+s*.3);
+  cx.bezierCurveTo(x-s*.5,y+s*.6,x,y+s*.8,x,y+s);
+  cx.bezierCurveTo(x,y+s*.8,x+s*.5,y+s*.6,x+s*.5,y+s*.3);
+  cx.bezierCurveTo(x+s*.5,y,x,y,x,y+s*.3);
+  cx.fill();
+}
+function burst(px, py, n=170){
+  const colors = ['#ff6b8a','#ffd98a','#ffffff','#ffb3c6'];
+  for(let i=0;i<n;i++){
+    const a = Math.random()*Math.PI*2, sp = (Math.random()*9+3)*DPR;
+    confetti.push({x:px*DPR, y:py*DPR, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-4*DPR,
+      w:(Math.random()*6+3)*DPR, h:(Math.random()*4+2)*DPR, rot:Math.random()*6,
+      vr:(Math.random()-.5)*.3, c:colors[(Math.random()*colors.length)|0], life:1});
+  }
+}
+function spark(x,y){
+  sparks.push({x:x*DPR,y:y*DPR,vx:(Math.random()-.5)*DPR,vy:(Math.random()-.5)*DPR-.3*DPR,
+    r:(Math.random()*2+1)*DPR, life:1});
+}
+addEventListener('pointermove', e => {
+  mx = (e.clientX/innerWidth - .5); my = (e.clientY/innerHeight - .5);
+  if(Math.random() < .35) spark(e.clientX, e.clientY);
+});
+
+function frame(){
+  cx.clearRect(0,0,W,H);
+  for(const s of stars){
+    s.p += s.s;
+    cx.globalAlpha = .25 + Math.abs(Math.sin(s.p))*.65;
+    cx.fillStyle = '#fff';
+    cx.beginPath();
+    cx.arc(s.x*W - mx*30*s.z*DPR, s.y*H - my*30*s.z*DPR, s.r*DPR, 0, 7);
+    cx.fill();
+  }
+  if(Math.random() < heartRate) addHeart();
+  cx.fillStyle = '#ff6b8a';
+  hearts = hearts.filter(h => h.y > -40*DPR);
+  for(const h of hearts){
+    h.y -= h.vy; h.sway += .02;
+    cx.globalAlpha = h.a;
+    drawHeart(h.x + Math.sin(h.sway)*18*DPR, h.y, h.size);
+  }
+  sparks = sparks.filter(s => s.life > 0);
+  for(const s of sparks){
+    s.x += s.vx; s.y += s.vy; s.life -= .03;
+    cx.globalAlpha = Math.max(s.life,0)*.8;
+    cx.fillStyle = '#ffd98a';
+    cx.beginPath(); cx.arc(s.x, s.y, s.r, 0, 7); cx.fill();
+  }
+  confetti = confetti.filter(c => c.life > 0);
+  for(const c of confetti){
+    c.x += c.vx; c.y += c.vy; c.vy += .22*DPR; c.vx *= .99; c.rot += c.vr; c.life -= .006;
+    cx.save();
+    cx.globalAlpha = Math.max(c.life,0);
+    cx.translate(c.x,c.y); cx.rotate(c.rot);
+    cx.fillStyle = c.c; cx.fillRect(-c.w/2,-c.h/2,c.w,c.h);
+    cx.restore();
+  }
+  cx.globalAlpha = 1;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ------------- সিন লজিক ------------- */
+const onEnter = {};
+
+/* ১: ইন্ট্রো */
+$('#introSub').textContent = CONFIG.introSub;
+$('#introTitle').innerHTML = 'মাঝখানে মাত্র <b>' + bn(CONFIG.km) + ' কিমি</b>';
+$('#startBtn').onclick = () => go(1);
+
+/* ২: কাউন্টার */
+$('#cSub').textContent = CONFIG.counterSub;
+let cTimer = null;
+function tickCounter(){
+  const diff = Math.max(0, Date.now() - new Date(CONFIG.since).getTime());
+  const s = Math.floor(diff/1000);
+  $('#cD').textContent = bn(Math.floor(s/86400));
+  $('#cH').textContent = bn(Math.floor(s%86400/3600));
+  $('#cM').textContent = bn(Math.floor(s%3600/60));
+  $('#cS').textContent = bn(s%60);
+}
+onEnter[1] = () => { heartRate = .008; tickCounter(); clearInterval(cTimer); cTimer = setInterval(tickCounter, 1000); };
+$('#toMem').onclick = () => go(2);
+
+/* ৩: স্মৃতি */
+let mi = 0;
+const mdots = $('#mdots');
+CONFIG.memories.forEach(() => mdots.appendChild(document.createElement('i')));
+function showMem(){
+  const card = $('#card'), m = CONFIG.memories[mi];
+  card.classList.remove('show');
+  setTimeout(() => {
+    $('#mWhen').textContent = m.when;
+    $('#mTtl').textContent = m.title;
+    $('#mTxt').textContent = m.text;
+    card.classList.add('show');
+    [...mdots.children].forEach((d,k) => d.classList.toggle('on', k === mi));
+    $('#memNext').textContent = mi === CONFIG.memories.length-1 ? 'এগিয়ে যাই' : 'পরেরটা';
+  }, 450);
+}
+onEnter[2] = () => { mi = 0; heartRate = .012; showMem(); };
+$('#memNext').onclick = () => {
+  if(mi >= CONFIG.memories.length-1){ go(3); return; }
+  mi++; showMem();
+};
+
+/* ৪: দূরত্ব — টেনে কাছে আনো */
+const stage = $('#stage'), orbA = $('#orbA'), orbB = $('#orbB'), ln = $('#ln');
+$('#distTitle').textContent = CONFIG.distTitle;
+$('#lblB').textContent = CONFIG.girl;
+let A = {x:0,y:0}, B = {x:0,y:0}, startDist = 1, met = false, dragging = false;
+
+function layout(){
+  const r = stage.getBoundingClientRect();
+  if(met) return;
+  A = {x:r.width*.13, y:r.height*.68};
+  B = {x:r.width*.87, y:r.height*.32};
+  startDist = Math.hypot(B.x-A.x, B.y-A.y);
+  draw();
+}
+function draw(){
+  orbA.style.left = A.x+'px'; orbA.style.top = A.y+'px';
+  orbB.style.left = B.x+'px'; orbB.style.top = B.y+'px';
+  $('#lblA').style.left = A.x+'px'; $('#lblA').style.top = (A.y+34)+'px';
+  $('#lblB').style.left = B.x+'px'; $('#lblB').style.top = (B.y+34)+'px';
+  ln.setAttribute('x1',A.x); ln.setAttribute('y1',A.y);
+  ln.setAttribute('x2',B.x); ln.setAttribute('y2',B.y);
+  const d = Math.hypot(B.x-A.x, B.y-A.y);
+  const ratio = Math.min(1, d/startDist);
+  if(CONFIG.km > 0){
+    $('#distNum').innerHTML = bn(Math.round(CONFIG.km*ratio)) + '<span>কিমি</span>';
+  } else {
+    $('#distNum').innerHTML = bn(Math.round(ratio*100)) + '<span>% দূরত্ব</span>';
+  }
+}
+function meet(){
+  met = true; dragging = false;
+  const r = stage.getBoundingClientRect();
+  A = {x:B.x-26, y:B.y+4};
+  draw();
+  ln.classList.add('joined');
+  $('#distNum').innerHTML = bn(0) + '<span>কিমি</span>';
+  $('#distHint').style.display = 'none';
+  burst(r.left + B.x, r.top + B.y, 140);
+  heartRate = .07;
+  $('#meetMsg').textContent = CONFIG.meetMsg;
+  $('#meetMsg').classList.add('show');
+  setTimeout(() => $('#toCake').classList.remove('hidden'), 2200);
+}
+orbA.addEventListener('pointerdown', e => { if(met) return; dragging = true; orbA.classList.add('drag'); orbA.setPointerCapture(e.pointerId); });
+orbA.addEventListener('pointermove', e => {
+  if(!dragging) return;
+  const r = stage.getBoundingClientRect();
+  A.x = Math.max(10, Math.min(r.width-10, e.clientX - r.left));
+  A.y = Math.max(10, Math.min(r.height-10, e.clientY - r.top));
+  draw();
+  if(Math.hypot(B.x-A.x, B.y-A.y) < 48) meet();
+});
+const endDrag = () => { dragging = false; orbA.classList.remove('drag'); };
+orbA.addEventListener('pointerup', endDrag);
+orbA.addEventListener('pointercancel', endDrag);
+addEventListener('resize', layout);
+onEnter[3] = () => { heartRate = .004; setTimeout(layout, 50); };
+$('#toCake').onclick = () => go(4);
+
+/* ৫: কেক */
+let blown = false;
+function blow(){
+  if(blown) return; blown = true;
+  ['#fl1','#fl2'].forEach(s => $(s).classList.add('out'));
+  ['#sm1','#sm2'].forEach(s => $(s).classList.add('go'));
+  $('#cakeHint').style.display = 'none';
+  setTimeout(() => {
+    burst(innerWidth/2, innerHeight*.4, 200);
+    heartRate = .08;
+    const t = $('#hbd'); t.textContent = fill(CONFIG.hbdTitle); t.style.display = 'block'; t.style.marginTop = '8px';
+    const s = $('#hbdSub'); s.textContent = CONFIG.hbdSub; s.style.display = 'block';
+  }, 700);
+  setTimeout(() => burst(innerWidth*.25, innerHeight*.5, 80), 1500);
+  setTimeout(() => burst(innerWidth*.75, innerHeight*.5, 80), 2000);
+  setTimeout(() => $('#toLetter').classList.remove('hidden'), 3400);
+}
+$('#cake').onclick = blow;
+onEnter[4] = () => { heartRate = .01; };
+$('#toLetter').onclick = () => go(5);
+
+/* ৬: চিঠি */
+let lettered = false;
+onEnter[5] = async () => {
+  heartRate = .03;
+  if(lettered) return; lettered = true;
+  $('#lTitle').textContent = fill(CONFIG.letterTitle);
+  const body = $('#lBody'); body.innerHTML = '';
+  CONFIG.letter.forEach(t => { const p = document.createElement('p'); p.textContent = fill(t); body.appendChild(p); });
+  $('#sign').textContent = '— ' + CONFIG.sender;
+  $('#sign').style.opacity = 0;
+  await sleep(1200);
+  const paper = $('#paper');
+  for(const p of body.children){
+    p.classList.add('show');
+    paper.scrollTo({top:paper.scrollHeight, behavior:'smooth'});
+    await sleep(2300);
+  }
+  $('#sign').style.transition = 'opacity 1.5s'; $('#sign').style.opacity = 1;
+  paper.scrollTo({top:paper.scrollHeight, behavior:'smooth'});
+  await sleep(1200);
+  $('#toEnd').classList.remove('hidden');
+};
+$('#toEnd').onclick = () => go(6);
+
+/* ৭: ফাইনাল */
+$('#endTitle').innerHTML = '<b>' + CONFIG.endTitle + '</b>';
+$('#endSub').textContent = CONFIG.endSub;
+let mTimer = null;
+function tickMeet(){
+  const diff = new Date(CONFIG.nextMeet).getTime() - Date.now();
+  if(diff <= 0){ $('#meetCnt').textContent = 'আজই দেখা! ♥'; return; }
+  const s = Math.floor(diff/1000);
+  $('#meetCnt').textContent = bn(Math.floor(s/86400)) + ' দিন ' + bn(Math.floor(s%86400/3600)) + ' ঘণ্টা ' + bn(Math.floor(s%3600/60)) + ' মিনিট';
+}
+onEnter[6] = () => {
+  heartRate = .1;
+  burst(innerWidth/2, innerHeight*.35, 120);
+  if(CONFIG.nextMeet){
+    $('#meetBox').style.display = 'block';
+    tickMeet(); clearInterval(mTimer); mTimer = setInterval(tickMeet, 30000);
+  }
+};
+$('#againBtn').onclick = () => location.reload();
+
+go(0);
+</script>
+</body>
+</html>
